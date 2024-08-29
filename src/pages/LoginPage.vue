@@ -1,36 +1,40 @@
 <template>
-    <v-container>
-      <v-row>
-        <v-col class="bg-surface-variant" align="center">
-          <v-card
-            color="surface-variant"
-            image="https://cdn.vuetifyjs.com/docs/images/cards/dark-beach.jpg"
-            max-width="340"
-            subtitle="Make a story of yourself"
-            title="My Diary"
-          />
-        </v-col>
-        <v-divider/>
-        <v-col class="bg-surface-variant" align="center">
-          <img @click="loginByKakao" src="/assets/kakao/kakao_login_medium_wide.png"/>
-        </v-col>
-        <v-divider/>
-        <v-col class="bg-surface-variant" align="center">
-          <v-btn @click="logout">Logout</v-btn>
-        </v-col>
-      </v-row>
+    <v-container class="py-6">
+      <v-card class="mx-auto px-6 py-8" max-width="344" :rounded="false">
+        <div>
+          <div class="text-script">My diary</div>
+          <div class="text-script">이야기를 작성해보세요.</div>
+          <img style="cursor: pointer;" @click="loginByKakao" src="/assets/kakao/kakao_login_medium_wide.png"/>
+          <div class="text-script">-------------------------- 또는 --------------------------</div>
+          <v-text-field label="휴대폰 번호 또는 이메일 주소"></v-text-field>
+          <v-text-field label="성명"></v-text-field>
+          <v-text-field label="사용자 이름"></v-text-field>
+          <v-text-field label="비밀번호"></v-text-field>
+          <v-btn size="large" variant="elevated" block color="primary">가입</v-btn>
+        </div>
+      </v-card>
+      <v-card class="mx-auto px-6 py-8 mt-4" max-width="344" :rounded="false">
+      <div class="text-script">계정이 있으신가요?
+        <span style="cursor: pointer;" @click="login">로그인</span>
+      </div>
+      </v-card>
     </v-container>
-</template>
+    
+  </template>
+    <!-- <v-btn @click="logout">Logout</v-btn> -->
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import api from '@/api'
 import axios from 'axios';
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth';
 
+const authStore = useAuthStore();
 const router = useRouter();
-const token = ref('');
 
 /* TODO: 
+  1. Router guard에서 로그인 여부에
   1. IndexedDB 연동
   2. 로그인 토큰을 암호화 해서 IndexedDB에 저장
   3. 로그아웃시 해당 Key를 찾아서 삭제
@@ -41,106 +45,50 @@ const token = ref('');
 
 // NOTE: 인가 코드 얻기
 function loginByKakao() {
-  Kakao.Auth.authorize({
-    redirectUri: 'http://localhost:3001/login',
-  });
+  // 인가 코드 받기
+  api.auth.getAuthorizeCode();
 } 
-
-// NOTE: 
-async function getKakaoToken(code) {
-  try {
-    const data = {
-      grant_type: 'authorization_code',
-      client_id: import.meta.env.VITE_KAKAO_REST_API_ID,
-      redirect_uri: 'http://localhost:3001/login',
-      code: code,
-    };
-
-    const queryString = Object.keys(data)
-    .map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(data[key])}`).join('&');
-    console.log('queryString = ', queryString);
-
-    const result = await axios.post(
-      "https://kauth.kakao.com/oauth/token",
-      queryString,
-      {
-        headers: {
-          'Content-Type' : 'application/x-www-form-urlencoded;charset=utf-8',
-        }
-      }
-    )
-    token.value = result;
-    return result;
-  } catch(e) {
-    console.log('e = ', e);
-  }
-}
-async function getKakaoUserInfo() {
-  let data = ''
-  await Kakao.API.request({
-    url: '/v2/user/me',
-  })
-  .then((response) => {
-    console.log('api response = ', response);
-    data = response;
-  })
-  .catch((error) => {
-    console.log('error');
-  })
-  return data;
-}
-
-// NOTE: 사용자 정보 조회
-async function setUserInfo() {
-  const response = await getKakaoUserInfo();
-  console.log('response = ', response);
-}
-
 // NOTE: 토큰 조회
-async function setKakaoToken(code) {
-  const { data } = await getKakaoToken(code);
-  if(data.error) {
-    return;
+async function logout() {
+  const accessToken = authStore.userInfo.accessToken;
+  // console.log('accessToken = ', accessToken);
+  const unLinkId = await api.auth.logout(accessToken);
+  if(unLinkId) {
+    authStore.clearAllInfo();
+    console.log('로그아웃 성공')
+    router.push('/login');
   }
-  Kakao.Auth.setAccessToken(data.access_token);
-  await setUserInfo();
-  router.push('/login')
-  
 }
 
-function logout() {
-
-  // NOTE: 로그아웃
-  Kakao.Auth.logout()
-  .then((response) => {
-    console.log(Kakao.Auth.getAccessToken());
-  })
-  .catch((error) => {
-    console.log('Logout Error = ', error );
-  })
-
-  // NOTE: 연결 끊기
-  Kakao.API.request({
-    url: '/v1/user/unlink',
-  })
-  .then((response) => {
-    console.log('response = ', response);
-  })
-  .catch((error) => {
-    console.log('Unlink Error = ', error);
-  })
-}
-
-onMounted(() => {
+onMounted(async () => {
   
   //NOTE: URI에서 토큰 추출
   const urlParams = new URLSearchParams(window.location.search);
 
-  //code가 있는 경우 토큰 발급 요청
+  // code가 있는 경우 토큰 발급 요청
+
   if(urlParams.get('code')) {
     const code = urlParams.get('code');
-    setKakaoToken(code);
+    // 인가 토큰 얻기
+    const token = await api.auth.getToken(code)
+    // Access 토큰 얻기
+    const accessToken = token.data.access_token;
+    // 유저정보 얻기
+    const userInfo = await api.auth.getUserInfo(accessToken);
+    // 스토어 데이터 업데이트
+    authStore.userInfo.accessToken = accessToken;
+    authStore.userInfo.userId = userInfo.data.id;
+    authStore.userInfo.nickName = userInfo.data.properties.nickName;
+    console.log('로그인 성공');
   }
 })
-
 </script>
+<style scoped>
+.text-script {
+  text-align: center;
+  span {
+    font-weight: bold;
+    color: #2196F3
+  }
+}
+</style>
