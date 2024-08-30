@@ -17,13 +17,22 @@ router.beforeEach((to, from, next) => {
   const authStore = useAuthStore();
 
   // NOTE: 인증 후 서비스 진입
-  if(to.path === '/login') {
+  if(to.path === '/welcome') {
+    next();
+  } else if (to.path === '/login'){
     next();
   } else {
     if(authStore.checkLoginInfoAll()) {
+      // 20분 세션
+      setTimeout(() => {
+        sessionStorage.removeItem('loginInfo')
+        authStore.tokenInfo.accessToken = '';
+        console.log('세션 타임 아웃');
+        router.push('/welcome')
+      }, 1000 * 120)
       next();
     } else {
-      next('/login');
+      next('/welcome');
     }
   }
 

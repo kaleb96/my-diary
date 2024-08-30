@@ -1,94 +1,204 @@
 <template>
-    <v-container class="py-6">
-      <v-card class="mx-auto px-6 py-8" max-width="344" :rounded="false">
-        <div>
-          <div class="text-script">My diary</div>
-          <div class="text-script">이야기를 작성해보세요.</div>
-          <img style="cursor: pointer;" @click="loginByKakao" src="/assets/kakao/kakao_login_medium_wide.png"/>
-          <div class="text-script">-------------------------- 또는 --------------------------</div>
-          <v-text-field label="휴대폰 번호 또는 이메일 주소"></v-text-field>
-          <v-text-field label="성명"></v-text-field>
-          <v-text-field label="사용자 이름"></v-text-field>
-          <v-text-field label="비밀번호"></v-text-field>
-          <v-btn size="large" variant="elevated" block color="primary">가입</v-btn>
-        </div>
-      </v-card>
-      <v-card class="mx-auto px-6 py-8 mt-4" max-width="344" :rounded="false">
-      <div class="text-script">계정이 있으신가요?
-        <span style="cursor: pointer;" @click="login">로그인</span>
-      </div>
-      </v-card>
-    </v-container>
-    
-  </template>
-    <!-- <v-btn @click="logout">Logout</v-btn> -->
+  <v-container class="py-6">
+    <v-card class="mx-auto px-10 py-8 card-outline" max-width="350" :rounded="false" variant="outlined">
+      <div>
+        <div class="text-script dancing-script-unique text-h4 mt-2 mb-9">My diary</div>
+        <v-text-field
+          density="compact"
+          placeholder="휴대폰 번호 또는 이메일 주소" 
+          type="input"
+          v-model="userContact"
+          variant="outlined"
+          validate-on="blur"
+          :append-inner-icon="isValidate ? validation.contact ? 'mdi-check-circle-outline' : 'mdi-alpha-x-circle-outline' : '' "
+          :rules="[rules.contact, rules.required]"
+          />
+        <v-text-field
+          placeholder="비밀번호" 
+          type="password"
+          variant="outlined"
+          density="compact"
+          validate-on="blur"
+          :rules="[rules.password, rules.required]"
+          :append-inner-icon="isValidate ? validation.password ? 'mdi-check-circle-outline' : 'mdi-alpha-x-circle-outline' : '' "
+          v-model="userPassword"/>
 
-<script setup>
+          <v-btn size="large" variant="elevated" block color="primary" @click="login()">로그인</v-btn>
+          <div class="text-script mt-3" style="color: #616161">
+            <span class="text-spacing">-----------------------------</span> 
+            <span class="px-4" style="font-weight: 600;">또는</span>
+            <span class="text-spacing">-----------------------------</span>
+          </div>
+          <div style="display: flex; flex-direction: column; align-items: center;">
+            <img class="mt-3" style="cursor: pointer;" @click="loginByKakao" src="/assets/kakao/kakao_login_small.png"/>
+            <div class="text-button" style="color: #2196F3; cursor: pointer;" @click="findPassword()">비밀번호를 잊으셨나요?</div>
+          </div>
+      </div>
+    </v-card>
+    <v-card class="mx-auto px-8 py-5 mt-4 card-outline" max-width="350px" :rounded="false" variant="outlined">
+    <div class="text-script text-body-2">계정이 없으신가요?
+      <span class="highlight" style="cursor: pointer;" @click="router.push('/welcome')">가입하기</span>
+    </div>
+    </v-card>
+  </v-container>
+  
+  <v-dialog v-model="showDialog" width="auto">
+    <v-card
+      max-width="400"
+      title="로그인에 문제가 있나요?"
+      text="비밀번호 찾기는 아직 서비스 준비중입니다."
+    >
+      <template v-slot:actions>
+        <v-btn text="알겠습니다." @click="showDialog= false"></v-btn>
+      </template>
+
+    </v-card>
+  </v-dialog>
+</template>
+  <!-- <v-btn @click="logout">Logout</v-btn> -->
+
+<script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import api from '@/api'
-import axios from 'axios';
+import { mdiCheckCircleOutline } from '@mdi/js';
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth';
+import { addUser, getAllUsers, getUsers, loginInfo, userInfo } from '@/assets/databases';
+import { emailRegex, mobleRegex, passwordRegex } from '@/assets/constants';
 
+// Refs
+const userContact = ref<string>('');
+const userPassword = ref<string>('');
+const isValidate = ref<boolean>(false);
+const showDialog = ref<boolean>(false);
+const validation = ref({
+contact: false,
+password: false,
+required: false,
+})
+
+// Stores
 const authStore = useAuthStore();
 const router = useRouter();
 
-/* TODO: 
-  1. Router guard에서 로그인 여부에
-  1. IndexedDB 연동
-  2. 로그인 토큰을 암호화 해서 IndexedDB에 저장
-  3. 로그아웃시 해당 Key를 찾아서 삭제
-  4. 로그아웃 하지 않아도, 일정 시간 지나면 삭제되도록 유도
-  5. Route에서 Login 이후에 이동할때에는 항상 IndexedDB를 조회해서 로그인 여부를 체크
-  6. 로그인 화면을 최초 화면으로 변경
-*/
+// input 규칙
+const rules = {
+contact: (value: string) => emailRegex.test(value)|| mobleRegex.test(value) ? validation.value.contact = true : validation.value.contact = false,
+password: (value: string) => passwordRegex.test(value) ? validation.value.password = true : validation.value.password = false,
+required: (value: string) => value != '' ? validation.value.required = true : validation.value.required = false,
+}
 
-// NOTE: 인가 코드 얻기
-function loginByKakao() {
-  // 인가 코드 받기
-  api.auth.getAuthorizeCode();
-} 
-// NOTE: 토큰 조회
-async function logout() {
-  const accessToken = authStore.userInfo.accessToken;
-  // console.log('accessToken = ', accessToken);
-  const unLinkId = await api.auth.logout(accessToken);
-  if(unLinkId) {
-    authStore.clearAllInfo();
-    console.log('로그아웃 성공')
-    router.push('/login');
+// NOTE: 회원가입
+async function login() {
+  isValidate.value = true;
+
+  if(!isValidate ||
+    !validation.value.contact ||
+    !validation.value.password ||
+    !validation.value.required
+  ) {
+    console.log('로그인 입력 내용 부실');
+    return;
   }
+
+  const loginData: loginInfo = {
+    user_contact: userContact.value,
+    user_password: userPassword.value,
+  }
+
+  const response = await getUsers(loginData);
+  if(response != undefined) {
+    if(response.user_password === loginData.user_password) {
+      const btoaUserId = btoa(response.user_id);
+      
+      sessionStorage.setItem('loginInfo', btoaUserId)
+      // 세션에 로그인 정보 저장
+      authStore.tokenInfo.accessToken = sessionStorage.getItem('loginInfo') as string;
+      router.push('/')
+    }
+  }
+  // 데이터 셋팅
+  // DB 조회
+}
+
+// NOTE: 카카오 로그인
+function loginByKakao() {
+// 인가 코드 받기
+api.auth.getAuthorizeCode();
+}
+
+// NOTE: 카카오 로그아웃
+async function logout() {
+const accessToken = authStore.tokenInfo.accessToken;
+// console.log('accessToken = ', accessToken);
+const unLinkId = await api.auth.logout(accessToken);
+if(unLinkId) {
+  authStore.clearAllInfo();
+  console.log('로그아웃 성공')
+  router.push('/login');
+}
+}
+
+// NOTE: 고유 ID 난수 생성
+function generateRandomId(): number {
+return Math.floor(1000 + Math.random() * 90000);
+}
+
+// TODO: 비밀번호 확인 클라이언트에서 구현하는 방법 찾기
+function findPassword() {
+  showDialog.value = true;
 }
 
 onMounted(async () => {
-  
+
   //NOTE: URI에서 토큰 추출
   const urlParams = new URLSearchParams(window.location.search);
 
   // code가 있는 경우 토큰 발급 요청
-
   if(urlParams.get('code')) {
     const code = urlParams.get('code');
+    
     // 인가 토큰 얻기
     const token = await api.auth.getToken(code)
+    
     // Access 토큰 얻기
     const accessToken = token.data.access_token;
+    
     // 유저정보 얻기
     const userInfo = await api.auth.getUserInfo(accessToken);
+    
     // 스토어 데이터 업데이트
-    authStore.userInfo.accessToken = accessToken;
-    authStore.userInfo.userId = userInfo.data.id;
-    authStore.userInfo.nickName = userInfo.data.properties.nickName;
+    authStore.tokenInfo.accessToken = accessToken;
+    authStore.tokenInfo.id = userInfo.data.id;
+    authStore.tokenInfo.nickName = userInfo.data.properties.nickName;
     console.log('로그인 성공');
   }
 })
 </script>
+
 <style scoped>
 .text-script {
-  text-align: center;
-  span {
-    font-weight: bold;
-    color: #2196F3
-  }
+text-align: center;
+}
+.highlight {
+font-weight: bold;
+color: #2196F3
+}
+.dancing-script-unique {
+font-family: "Dancing Script", cursive;
+font-weight: 700;
+font-style: normal;
+font-size: 2rem;
+}
+.welcome {
+font-weight: 700;
+color: #616161
+}
+.card-outline {
+border-color: #BDBDBD;
+}
+.text-spacing {
+letter-spacing: -1px;
+opacity: 55%;
 }
 </style>
