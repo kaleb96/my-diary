@@ -1,18 +1,18 @@
 const routes = [
   {
     path: '/',
-    component: import('@/layouts/index.vue'),
+    component: import('@/layouts/WorkspaceLayout.vue'),
     children: [
       {
         path: '',
         name: '/',
-        component: import('@/pages/index.vue')
+        component: import('@/pages/WorkspacePage.vue')
       }
     ]
   },
   {
     path: '/welcome',
-    component: import('@/pages/welcomePage.vue')
+    component: import('@/pages/WelcomePage.vue')
   },
   {
     path: '/login',

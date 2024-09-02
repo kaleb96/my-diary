@@ -38,7 +38,7 @@
           <v-text-field
             bg-color="#FAFAFA"
             class="my-2"
-            placeholder="사용자 이름" 
+            placeholder="사용자 별명" 
             type="input"
             variant="outlined"
             :hide-details="true"
@@ -75,10 +75,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import api from '@/api'
-import { mdiCheckCircleOutline } from '@mdi/js';
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth';
-import { addUser, getAllUsers, userInfo } from '@/assets/databases';
+import { registerUser, userInfo } from '@/assets/databases';
 import { emailRegex, mobleRegex, passwordRegex } from '@/assets/constants';
 
 // Refs
@@ -127,7 +126,7 @@ async function join() {
   }
   console.log('login = ', userInfo);
   // DB에 데이터 등록
-  await addUser(userInfo);
+  await registerUser(userInfo);
   router.push('/login');
   // DB 조회
   // const response = await getAllUsers();
@@ -139,21 +138,10 @@ function loginByKakao() {
   api.auth.getAuthorizeCode();
 }
 
-// NOTE: 카카오 로그아웃
-async function logout() {
-  const accessToken = authStore.tokenInfo.accessToken;
-  // console.log('accessToken = ', accessToken);
-  const unLinkId = await api.auth.logout(accessToken);
-  if(unLinkId) {
-    authStore.clearAllInfo();
-    console.log('로그아웃 성공')
-    router.push('/login');
-  }
-}
-
 // NOTE: 고유 ID 난수 생성
-function generateRandomId(): number {
-  return Math.floor(1000 + Math.random() * 90000);
+function generateRandomId(): string {
+  const randomId = Math.floor(1000 + Math.random() * 90000)
+  return randomId.toString();
 }
 
 onMounted(async () => {
