@@ -60,10 +60,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import api from '@/api'
-import { mdiCheckCircleOutline } from '@mdi/js';
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth';
-import { addUser, getAllUsers, getUsers, loginInfo, userInfo } from '@/assets/databases';
+import { getLoginInfo, loginInfo, } from '@/assets/databases';
 import { emailRegex, mobleRegex, passwordRegex } from '@/assets/constants';
 
 // Refs
@@ -88,7 +87,7 @@ password: (value: string) => passwordRegex.test(value) ? validation.value.passwo
 required: (value: string) => value != '' ? validation.value.required = true : validation.value.required = false,
 }
 
-// NOTE: 회원가입
+// NOTE: 일반 로그인
 async function login() {
   isValidate.value = true;
 
@@ -106,12 +105,18 @@ async function login() {
     user_password: userPassword.value,
   }
 
-  const response = await getUsers(loginData);
+  const response = await getLoginInfo(loginData);
+  console.log('response = ',response);
   if(response != undefined) {
     if(response.user_password === loginData.user_password) {
-      const btoaUserId = btoa(response.user_id);
-      
-      sessionStorage.setItem('loginInfo', btoaUserId)
+      const btoaUserId = btoa(response.id);
+      const user_info = {
+        user_id: btoaUserId,
+        user_contact: response.user_contact,
+        user_nickname: response.user_nickname,
+        user_name: response.user_name,
+      }
+      sessionStorage.setItem('loginInfo', JSON.stringify(user_info))
       // 세션에 로그인 정보 저장
       authStore.tokenInfo.accessToken = sessionStorage.getItem('loginInfo') as string;
       router.push('/')
@@ -125,23 +130,6 @@ async function login() {
 function loginByKakao() {
 // 인가 코드 받기
 api.auth.getAuthorizeCode();
-}
-
-// NOTE: 카카오 로그아웃
-async function logout() {
-const accessToken = authStore.tokenInfo.accessToken;
-// console.log('accessToken = ', accessToken);
-const unLinkId = await api.auth.logout(accessToken);
-if(unLinkId) {
-  authStore.clearAllInfo();
-  console.log('로그아웃 성공')
-  router.push('/login');
-}
-}
-
-// NOTE: 고유 ID 난수 생성
-function generateRandomId(): number {
-return Math.floor(1000 + Math.random() * 90000);
 }
 
 // TODO: 비밀번호 확인 클라이언트에서 구현하는 방법 찾기

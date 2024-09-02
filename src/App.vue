@@ -1,12 +1,16 @@
 <template>
-  <router-view />
+  <div id="app">
+    <router-view />
+  </div>
 </template>
 
 <script setup lang="ts">
-import { onBeforeMount } from 'vue';
-import { useAuthStore } from './stores/auth';
-
-onBeforeMount(() =>{
-   const authStore = useAuthStore();
-})
 </script>
+<style scoped>
+#app {
+  width: 375px;
+  margin: 0 auto;
+}
+
+
+</style>
