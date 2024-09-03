@@ -1,6 +1,9 @@
 <template>
-  <Date v-if="!showWriter"@selected-date="getSelectedDate"></Date>
-  <Editor v-else></Editor>
+  <Date v-if="!showWriter" @selected-date="getSelectDate"></Date>
+  <Editor 
+    @save-data="hideEditor"
+    @show-editor="hideEditor" 
+    :selected-date="selectedDate" v-else ></Editor>
   <!-- <v-virtual-scroll
     :height="300"
   >
@@ -14,9 +17,18 @@ import { ref } from 'vue';
 
 // Refs
 const showWriter = ref<boolean>(false);
-function getSelectedDate(payload: any) {
+const selectedDate = ref('');
+
+// NOTE: Emit 리시버
+// 선택된 날짜 저장
+function getSelectDate(payload: any) {
+  selectedDate.value = payload
+  showWriter.value = true;
+}
+// 에디터 to 캘린더
+function hideEditor(payload: any) {
   if(payload) {
-    showWriter.value = true;
+    showWriter.value = false;
   }
 }
 </script>

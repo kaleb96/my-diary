@@ -62,7 +62,7 @@ import { ref, onMounted } from 'vue';
 import api from '@/api'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth';
-import { getLoginInfo, loginInfo, } from '@/assets/databases';
+import { getLoginInfo, loginInfo, } from '@/assets/databases/auth';
 import { emailRegex, mobleRegex, passwordRegex } from '@/assets/constants';
 
 // Refs

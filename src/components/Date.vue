@@ -1,7 +1,7 @@
 <template>
   <v-container>
     <v-date-picker
-      v-model="activeDate"
+      v-model="selectDate"
       color="#1E88E6"
       :border="true"
       width="100%"
@@ -11,32 +11,51 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, defineEmits } from 'vue';
+import { getSelectedDates } from '@/assets/databases/workspace';
+import { formatDate } from '@/assets/scripts/util';
+import { ref, watch, defineEmits, onMounted,} from 'vue';
+
 // Refs
-const activeDate = ref([]);
+const selectDate = ref([]);
 
 // emits
-const emit = defineEmits(['selectedDate'])
-// NOTE: Date 포맷팅
-function formatDate(date: string): string {
-  const getDate = new Date(date)
-  const formatDate = getDate.toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
+const emit = defineEmits<{
+  (e: 'selectedDate', value: string): void
+}>()
+
+// NOTE: DB를 조회하여 작성 기록이 있는 날짜 Highlight
+async function getDate() {
+  const loginInfo = JSON.parse(sessionStorage.getItem('loginInfo'));
+  const userId = loginInfo.user_id;
+  const response = await getSelectedDates(userId)
+  response.forEach(element => {
+    const targetElement = document.querySelector(`[data-v-date="${element}"]`)
+    if(targetElement) {
+      targetElement.classList.add('highlight-date');
+    }
   });
-  return formatDate;
 }
 
-watch(activeDate, (date: any) => {
-  // TODO: 글을 작성이 완료될 경우 activeDate에 데이터 추가
+// Watches
+watch(selectDate, (date: any) => {
+  // 날짜 선택을 감지하여 에디터로 컴포넌트 변경
   const selectedDate = formatDate(date);
-  emit('selectedDate', selectedDate)
+  emit('selectedDate', selectedDate);
+})
+
+// LifeCycle
+onMounted(async () => {
+  getDate();
 })
 </script>
 
 <style>
 .v-picker-title > div {
   display: none;
+}
+
+.highlight-date > button {
+  background-color: rgb(30, 136, 230);
+  color: white;
 }
 </style>

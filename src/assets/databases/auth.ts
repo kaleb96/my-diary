@@ -4,7 +4,6 @@ import { openDB } from 'idb';
 const DB_NAME = 'user_data';
 const DB_VERSION = 1;
 const LOGIN_STORE = 'login_info';
-const USER_INFO = 'user_info'
 
 // Interfaces
 export interface userInfo {
@@ -30,17 +29,29 @@ export async function initLoginDB() {
   });
 }
 
-// NOTE: 로그인
+// Functions
+// 로그인 DB 전체 조회
 export async function getLoginInfoAll() {
   const db = await initLoginDB();
   return db.getAll(LOGIN_STORE);
 }
+// 로그인 조회
 export async function getLoginInfo(loginData: loginInfo) {
   const db = await initLoginDB();
-  return await db.get(LOGIN_STORE, loginData.user_contact);
-}
-export async function registerUser(user: userInfo) {
+  try {
+    return await db.get(LOGIN_STORE, loginData.user_contact);
 
+  } catch (error) {
+    console.log('로그인 정보 조회 실패', error);
+  }
+}
+// 회원가입
+export async function registerUser(user: userInfo) {
   const db = await initLoginDB();
-  return db.add(LOGIN_STORE, user);
+  try {
+    return db.add(LOGIN_STORE, user);
+
+  } catch (error) {
+    console.log('회원 가입 실패', error)
+  }
 }
