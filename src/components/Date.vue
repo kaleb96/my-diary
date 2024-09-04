@@ -11,8 +11,8 @@
 </template>
 
 <script setup lang="ts">
-import { getSelectedDates } from '@/assets/databases/workspace';
-import { formatDate } from '@/assets/scripts/util';
+import { getDates } from '@/assets/databases/workspace';
+import { formatDate, getSessionData } from '@/assets/utils';
 import { ref, watch, defineEmits, onMounted,} from 'vue';
 
 // Refs
@@ -25,15 +25,16 @@ const emit = defineEmits<{
 
 // NOTE: DB를 조회하여 작성 기록이 있는 날짜 Highlight
 async function getDate() {
-  const loginInfo = JSON.parse(sessionStorage.getItem('loginInfo'));
-  const userId = loginInfo.user_id;
-  const response = await getSelectedDates(userId)
-  response.forEach(element => {
-    const targetElement = document.querySelector(`[data-v-date="${element}"]`)
+  // 세션 정보 추출
+    const loginInfo = getSessionData('loginInfo');
+    const userId = loginInfo.user_id;
+    const response = await getDates(userId);
+    response?.forEach(element => {
+      const targetElement = document.querySelector(`[data-v-date="${element.date}"]`)
     if(targetElement) {
       targetElement.classList.add('highlight-date');
-    }
-  });
+      }
+    });
 }
 
 // Watches

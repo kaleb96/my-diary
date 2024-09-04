@@ -18,11 +18,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, defineEmits, defineProps, watch } from 'vue'
+import { ref, onMounted, defineEmits, defineProps,} from 'vue'
 import Quill from 'quill';
 import 'quill/dist/quill.snow.css';
-import { editorContentsType, getSelectedDates, saveEditorContents } from '@/assets/databases/workspace';
-import { formatDate } from '@/assets/scripts/util';
+import { editorContentsType, saveEditorContents } from '@/assets/databases/workspace';
+import { formatDate, getSessionData, makeWorkspaceCode } from '@/assets/utils';
 
 // Refs
 const editor = ref('');
@@ -46,20 +46,21 @@ const emit = defineEmits<{
  */
 async function saveContents() {
   // 유저 정보 불러오기
-  const loginInfo = JSON.parse(sessionStorage.getItem('loginInfo'));
+  const loginInfo = getSessionData('loginInfo');
   const userId = loginInfo.user_id;
 
   // 선택된 날짜 불러오기
-  const formatedData = formatDate(props.selectedDate);
+  const loadSelectedDate = formatDate(props.selectedDate);
 
   // 에디터 컨텐츠 불러오기
   const editorContents = JSON.stringify(editor.value.getContents().ops);
-
+  
   // // DB에 저장
   const saveEditorData: editorContentsType = {
+    code: makeWorkspaceCode(userId, loadSelectedDate),
     user_id: userId,
-    selected_date: [formatedData],
-    editor_content:editorContents
+    date: loadSelectedDate,
+    contents: [editorContents]
   }
   await saveEditorContents(saveEditorData);
   emit('saveData', true);
@@ -82,8 +83,13 @@ onMounted(() => {
     theme: 'snow',
     placeholder: '이야기를 입력하세요.',
     modules: {
-      toolbar: toolbarOptions
-    }
+      toolbar: toolbarOptions,
+      history: {
+        delay: 2000,
+        maxStack: 500,
+        userOnly: true,
+      }
+    },
   })
 })
 </script>
